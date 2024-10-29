@@ -1,0 +1,14 @@
+
+dataProcessing/ordinances/*
+dataProcessing/ordinances/*/*
+dataProcessing/vectorData/*
+dataProcessing/.env
+dataProcessing/*.zip
+
+# db/*git 
+
+__pycache__/
+*/__pycache__/
+*.py[cod]
+*.DS_Store
+*/.DS_Store
