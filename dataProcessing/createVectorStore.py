@@ -62,25 +62,26 @@ def convert_vector(vector):
         return list(map(float, vector.strip('[]').split(',')))
     return vector
 
-table = db.create_table(
-        name = "ordinances",
-        schema = OrdinanceSchema,
-        mode = "overwrite",
-    )
+# table = db.create_table(
+#         name = "ordinances",
+#         schema = OrdinanceSchema,
+#         mode = "overwrite",
+#     )
+table = db.open_table("ordinances")
 
-for lang in ["en", "sc", "tc"]:
-    df = pd.read_csv(f"vectorData/ordinances_{lang}.csv")
-    df["vector"] = df["vector"].apply(convert_vector)
-    df["lang"] = lang
-    print(df.info())
+# for lang in ["en", "sc", "tc"]:
+#     df = pd.read_csv(f"vectorData/ordinances_{lang}.csv")
+#     df["vector"] = df["vector"].apply(convert_vector)
+#     df["lang"] = lang
+#     print(df.info())
 
-    table.add(df)
+#     table.add(df)
 
 
-table.create_fts_index("text")
+table.create_fts_index("text", use_tantivy=False)
 
 query = "Copyright"
-docs = table.search(query, query_type="vector").limit(5).to_pandas()["text"].to_list()
+docs = table.search(query=query, query_type="fts", fts_columns="text").limit(5).to_pandas()["text"].to_list()
 print(docs)
 
 
