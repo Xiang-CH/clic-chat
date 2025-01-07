@@ -1,61 +1,46 @@
 import json
+import os
 from typing import Literal
 
 import lancedb
-from cachetools import cached
+# from cachetools import cached
 from dotenv import load_dotenv
 from flask import Flask, request
-from lancedb.embeddings import get_registry, TextEmbeddingFunction
+# from lancedb.embeddings import get_registry, TextEmbeddingFunction
 from lancedb.rerankers import RRFReranker
-from langchain_openai import AzureOpenAIEmbeddings
+
+os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
 app = Flask(__name__)
 app.debug = True
 load_dotenv()
-
+db = lancedb.connect("../../db/lancedb")
 
 @app.route("/api/python")
 def hello_world():
     return "<p>Hello, World!</p>"
 
-
-registry = get_registry()
-
-
-@registry.register("azure-openai")
-class AzureOpenAIEmbeddingsFunction(TextEmbeddingFunction):
-    name: str = "embedding"
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self._ndims = None
-
-    def generate_embeddings(self, texts):
-        return self._embedding_model().embed_documents(texts)
-
-    def ndims(self):
-        if self._ndims is None:
-            self._ndims = len(self.generate_embeddings("foo")[0])
-        return self._ndims
-
-    @cached(cache={})
-    def _embedding_model(self):
-        return AzureOpenAIEmbeddings(model="embedding")
-
-
-# azure_openai = registry.get("azure-openai").create()
-# embedding_function = AzureOpenAIEmbeddings(model="embedding")
-
-def search_db(query, query_type: Literal["vector", "fts", "hybrid", "auto"] = "hybrid"):
-    db = lancedb.connect("../db")
+def search_ord(query, top_k = 10, query_type: Literal["vector", "fts", "hybrid", "auto"] = "hybrid"):
     table = db.open_table("ordinances")
 
     if query_type == "hybrid":
         reranker = RRFReranker(return_score="all")
-        docs = table.search(query, query_type=query_type).limit(10).rerank(reranker=reranker).to_pandas()[
+        docs = table.search(query, query_type=query_type).limit(top_k).rerank(reranker=reranker).to_pandas()[
             ["text", "cap_no", "cap_title", "url", "_relevance_score"]]
     else:
-        docs = table.search(query, query_type=query_type, fts_columns="text").limit(10).to_pandas()
+        docs = table.search(query, query_type=query_type, fts_columns="text").limit(top_k).to_pandas()
+
+    return docs.to_json(orient="records")
+
+def search_judg(query, top_k = 10, query_type: Literal["vector", "fts", "hybrid", "auto"] = "hybrid"):
+    table = db.open_table("judgements")
+
+    if query_type == "hybrid":
+        reranker = RRFReranker(return_score="all")
+        docs = table.search(query, query_type=query_type).limit(top_k).rerank(reranker=reranker).to_pandas()[
+            ["text", "case_name", "case_number", "date", "court", "_relevance_score"]]
+    else:
+        docs = table.search(query, query_type=query_type, fts_columns="text").limit(top_k).to_pandas()
 
     return docs.to_json(orient="records")
 
@@ -66,23 +51,44 @@ def search():
     if not query:
         return "No query provided", 400
 
-    return search_db(query, query_type="fts"), 200
+    return search_ord(query, top_k=10, query_type="fts"), 200
 
 
-@app.route('/stream', methods=['POST'])
-def ask():
-    body = request.form
-    conversation = json.loads(request.form.get('conversation'))
+@app.route("/retrieval", methods=["POST"])
+def retrieval():
+    body = request.json
 
-    if not conversation:
-        return "No conversation provided", 400
-    elif conversation[-1]["role"] != "user":
-        return "Last message must be from user", 400
+    knowledge_id = body.get("knowledge_id")
+    query = body.get("query")
+    retrieval_setting = body.get("retrieval_setting")
 
-    query = conversation[-1]["content"]
+    if not query:
+        return "No query provided", 400
+    
+    if knowledge_id == "ordinances":
+        return search_ord(query, retrieval_setting["top_k"], query_type="hybrid"), 200
+    elif knowledge_id == "judgements":
+        return search_judg(query, retrieval_setting["top_k"], query_type="hybrid"), 200
+    else:
+        return "Invalid knowledge_id", 400
 
-    def iter_data():
-        # Return the search results as a stream
-        yield search_db(query)
 
-    return iter_data(), {'Content-Type': 'text/event-stream'}
+
+
+# @app.route('/stream', methods=['POST'])
+# def ask():
+#     body = request.form
+#     conversation = json.loads(request.form.get('conversation'))
+
+#     if not conversation:
+#         return "No conversation provided", 400
+#     elif conversation[-1]["role"] != "user":
+#         return "Last message must be from user", 400
+
+#     query = conversation[-1]["content"]
+
+#     def iter_data():
+#         # Return the search results as a stream
+#         yield search_db(query)
+
+#     return iter_data(), {'Content-Type': 'text/event-stream'}

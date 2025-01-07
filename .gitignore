@@ -6,6 +6,7 @@ dataProcessing/.env
 dataProcessing/*.zip
 
 # db/*git 
+db/lancedb
 
 __pycache__/
 */__pycache__/
@@ -19,7 +20,8 @@ raw_judgments
 .env
 
 legislations
-judgments
-legislations/*
-judgments/*
+judgements
 *.zip
+
+legislations_chunks
+judgements_chunks

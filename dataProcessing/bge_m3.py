@@ -1,11 +1,15 @@
 from sentence_transformers import SentenceTransformer
+import torch
+
+def get_device():
+    return "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
  
 def get_bge_m3_model():
-    model = SentenceTransformer("BAAI/bge-m3", device="mps")
+    model = SentenceTransformer("BAAI/bge-m3", device=get_device())
     return model
  
-def get_bge_m3_embeddings(model, sentences):
-    embeddings = model.encode(sentences)
+def get_bge_m3_embeddings(model, sentences, show_progress_bar=False):
+    embeddings = model.encode(sentences, show_progress_bar=show_progress_bar)
     return embeddings
 
 if __name__ == "__main__":

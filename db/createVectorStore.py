@@ -13,41 +13,37 @@ from lancedb.pydantic import Vector, LanceModel
 load_dotenv()
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
-embedding_function = AzureOpenAIEmbeddings(model="embedding")
+# embedding_function = AzureOpenAIEmbeddings(model="embedding")
 
 registry = get_registry()
 
-@registry.register("azure-openai")
-class AzureOpenAIEmbeddingsFunction(TextEmbeddingFunction):
-    name: str = "embedding"
+# @registry.register("azure-openai")
+# class AzureOpenAIEmbeddingsFunction(TextEmbeddingFunction):
+#     name: str = "embedding"
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self._ndims = None
+#     def __init__(self, **kwargs):
+#         super().__init__(**kwargs)
+#         self._ndims = None
 
-    def generate_embeddings(self, texts):
-        return self._embedding_model().embed_documents(texts)
+#     def generate_embeddings(self, texts):
+#         return self._embedding_model().embed_documents(texts)
 
-    def ndims(self):
-        if self._ndims is None:
-            self._ndims = len(self.generate_embeddings("foo")[0])
-        return self._ndims
+#     def ndims(self):
+#         if self._ndims is None:
+#             self._ndims = len(self.generate_embeddings("foo")[0])
+#         return self._ndims
 
-    @cached(cache={})
-    def _embedding_model(self):
-        return AzureOpenAIEmbeddings(model="embedding")
+#     @cached(cache={})
+#     def _embedding_model(self):
+#         return AzureOpenAIEmbeddings(model="embedding")
 
-azure_openai = registry.get("azure-openai").create()
-db = lancedb.connect("../db")
-
-# class AzureOpenaiVector(Vector):
-#     def __init__(self):
-#         super().__init__(dims=azure_openai.ndims())
-
+# azure_openai = registry.get("azure-openai").create()
+sentence_transformer = registry.get("sentence-transformers").create()
+db = lancedb.connect("./lancedb")
 
 class OrdinanceSchema(LanceModel):
-    text: str = azure_openai.SourceField()
-    vector: Vector(dim=azure_openai.ndims()) = azure_openai.VectorField() # type: ignore
+    text: str = sentence_transformer.SourceField()
+    vector: Vector(dim=sentence_transformer.ndims()) = sentence_transformer.VectorField() # type: ignore
     lang: str
     cap_no: int
     section_no: str
@@ -62,11 +58,11 @@ def convert_vector(vector):
         return list(map(float, vector.strip('[]').split(',')))
     return vector
 
-# table = db.create_table(
-#         name = "ordinances",
-#         schema = OrdinanceSchema,
-#         mode = "overwrite",
-#     )
+table = db.create_table(
+        name = "ordinances",
+        schema = OrdinanceSchema,
+        mode = "overwrite",
+    )
 table = db.open_table("ordinances")
 
 # for lang in ["en", "sc", "tc"]:
