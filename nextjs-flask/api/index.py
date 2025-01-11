@@ -9,6 +9,7 @@ from flask import Flask, request
 # from lancedb.embeddings import get_registry, TextEmbeddingFunction
 from lancedb.rerankers import RRFReranker
 
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
 app = Flask(__name__)
