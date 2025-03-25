@@ -8,34 +8,33 @@ import lancedb
 from lancedb.embeddings import get_registry, TextEmbeddingFunction
 from lancedb.rerankers import RRFReranker
 
-registry = get_registry()
+# registry = get_registry()
 
-@registry.register("azure-openai")
-class AzureOpenAIEmbeddingsFunction(TextEmbeddingFunction):
-    name: str = "embedding"
+# @registry.register("azure-openai")
+# class AzureOpenAIEmbeddingsFunction(TextEmbeddingFunction):
+#     name: str = "embedding"
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self._ndims = None
+#     def __init__(self, **kwargs):
+#         super().__init__(**kwargs)
+#         self._ndims = None
 
-    def generate_embeddings(self, texts):
-        return self._embedding_model().embed_documents(texts)
+#     def generate_embeddings(self, texts):
+#         return self._embedding_model().embed_documents(texts)
 
-    def ndims(self):
-        if self._ndims is None:
-            self._ndims = len(self.generate_embeddings("foo")[0])
-        return self._ndims
+#     def ndims(self):
+#         if self._ndims is None:
+#             self._ndims = len(self.generate_embeddings("foo")[0])
+#         return self._ndims
 
-    @cached(cache={})
-    def _embedding_model(self):
-        return AzureOpenAIEmbeddings(model="embedding")
+#     @cached(cache={})
+#     def _embedding_model(self):
+#         return AzureOpenAIEmbeddings(model="embedding")
 
-azure_openai = registry.get("azure-openai").create()
+# azure_openai = registry.get("azure-openai").create()
 
 load_dotenv()
-embedding_function = AzureOpenAIEmbeddings(model="embedding")
 
-db = lancedb.connect("../db")
+db = lancedb.connect("./lancedb")
 
 print(db.table_names())
 table = db.open_table("ordinances")

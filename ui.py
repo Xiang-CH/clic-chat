@@ -7,7 +7,7 @@ import lancedb
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
-db = lancedb.connect("../../db/lancedb")
+db = lancedb.connect("db/lancedb")
 ord_table = db.open_table("ordinances")
 judg_table = db.open_table("judgements")
 
@@ -213,4 +213,4 @@ with gr.Blocks(fill_height=True, elem_id="consult_block") as consult_block:
 demo = gr.TabbedInterface(interface_list=[consult_block, chat_block, search_block], tab_names=["Consult", "Chat", "Search"], title="CLIC-Chat Demo")
 
 if __name__ == "__main__":
-    demo.launch(share=True)
+    demo.launch(share=False)
