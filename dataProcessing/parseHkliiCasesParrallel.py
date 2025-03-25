@@ -17,7 +17,7 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 
 DEBUG = False
 RAW_PATH = "raw_judgments"
-BASE_PATH = "judgments"
+BASE_PATH = "judgments2"
 
 # Set up logging
 logging.basicConfig(level=logging.ERROR, format='%(asctime)s - %(levelname)s - %(message)s', filename='parseHkliiCases.log', filemode='w')
@@ -100,7 +100,7 @@ def process_court_registry(lang, court_registry, position):
             "url": f"https://www.hklii.hk/en/cases/{court}/{year}/{post_citaiton_num}",
             "case_number": row["case_number"],
             "law_report_citations": row["law_report_citations"],
-            "content": content.strip()
+            "content": repr(content.strip())
         })
 
     return case_data
