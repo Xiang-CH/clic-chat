@@ -2,6 +2,7 @@ import gradio as gr
 import json
 import os
 from typing import Literal
+from prompts import getQAPrompt, getTasksPrompt, getQueryRewritePrompt, consultTaskSchema
 
 import lancedb
 
@@ -16,7 +17,7 @@ def search(query, table = "ordinances", top_k = 10, query_type: Literal["vector"
     if table == "ordinances":
         docs = ord_table.search(query, query_type=query_type, fts_columns="text").limit(top_k).to_list()
     elif table == "judgements":
-        docs = judg_table.search(query, query_type=query_type, fts_columns="text").limit(top_k).to_list()
+        docs = judg_table.search(query, query_type=query_type, fts_columns="case_summary").limit(top_k).to_list()
     else:
         docs = []
 
@@ -27,7 +28,7 @@ def search(query, table = "ordinances", top_k = 10, query_type: Literal["vector"
 
 with gr.Blocks() as search_block:
     with gr.Row():
-        top_k = gr.Number(value=10, label="Top K")
+        top_k = gr.Number(value=6, label="Top K")
         query_type = gr.Radio(["vector", "fts", "hybrid"], value="hybrid", label="Query Type")
     query = gr.Textbox(label="Query Input")
     search_btn = gr.Button("Search")
@@ -40,7 +41,7 @@ with gr.Blocks() as search_block:
                 ords = search(query, "ordinances", top_k, query_type)
 
                 for ord in ords:
-                    gr.Markdown(f"**{ord['cap_title']}**\n\n{ord['text']}\n\n[Read More]({ord['url']})")
+                    gr.Markdown(f"**{ord['cap_title']}**\n\n{ord['text']}\n\n[Read More]({ord['url']})\n\nScore: {ord['_relevance_score']}")
         with gr.Column():
             judgt = gr.Text(label="Judgements Output")
             @gr.render(inputs=[query, top_k, query_type], triggers=[search_btn.click, query.submit])
@@ -48,21 +49,25 @@ with gr.Blocks() as search_block:
                 judges = search(query, "judgements", top_k, query_type)
 
                 for judge in judges:
-                    gr.Markdown(f"**{judge['date']}: {judge['case_name']}**\n\n{judge['text']}\n\n[Read More]({judge['url']})")
+                    gr.Markdown(f"**{judge['date']}: {judge['case_name']}**\n\n{judge['case_summary']}\n\n[Read More]({judge['url']})\n\nScore: {judge['_relevance_score']}")
     
 
     # search_btn.click(inputs=[query, top_k, query_type], outputs=[ord_output, judg_output], fn=search)
 
 # Chat UI
 from dotenv import load_dotenv
-load_dotenv()
+load_dotenv(override=True)
+
 
 from openai import AzureOpenAI
 llm_client = AzureOpenAI(
     azure_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT"), 
     api_key=os.getenv("AZURE_OPENAI_API_KEY"),  
-    api_version="2024-10-21"
+    api_version="2025-03-01-preview"
 )
+# model="glm-4-flash",
+MODEL="gpt-4o-mini"
+# model="glm-4-plus",
 
 # from openai import OpenAI
 # llm_client = OpenAI(
@@ -70,26 +75,7 @@ llm_client = AzureOpenAI(
 #     base_url = "https://open.bigmodel.cn/api/paas/v4/"
 # ) 
 
-sys_template = f"""You a Hong Kong legal questioning agent. You are required to answer questions from the public about the law in Hong Kong. You should provide accurate and reliable information to the public. **Do not answer** questions that are not related to the law in Hong Kong. You are not a lawyer and cannot offer legal advice. 
 
-Answer the questions based on the informations given below. Always cite the source of your information and provide the url link, and never answer if the answer cannot be found in the information provided.
-
-### Ordinances and Regulations
-{{ordinances}}
-
-### Judgements and Cases
-{{judgements}}
-
-
-- Answering Style: Be short and concise use Markdown to format your answers. Use callouts, bold, bullet points etc. to highlight important information.
-- Citation Style: Always cite the source information by providing a hyperlink to the source url.
-"""
-
-search_query_agent_prompt = """You are a search query agent. You are required to generate a search query based on the user's new message and the conversation history. The search data includes information about the law in Hong Kong. *Do not* answer any questions. Understand the entire conversation even if the user asks a follow-up question, include the context of the conversation in the search query.
-
-Do not include 'Hong Kong' in the search query.
-Output only the search query, and nothing else.
-"""
 
 def get_search_query(message, history):
     conversation = "\n".join([f"{msg['role']}: {msg['content']}" for msg in history]) if history else "No conversation history."
@@ -97,21 +83,20 @@ def get_search_query(message, history):
     user_message = "### Conversation History\n" + conversation + "\n\n### New User Message\n" + message
 
     complete_message = llm_client.chat.completions.create(
-        # model="glm-4-flash",
-        model="trygpt4o",
-        messages=[{"role": "system", "content": search_query_agent_prompt}] + [{"role": "user", "content": user_message}],
+        model=MODEL,
+        messages=[{"role": "system", "content": getQueryRewritePrompt()}] + [{"role": "user", "content": user_message}],
     )
-
+    print("search complete")
     return complete_message.choices[0].message.content
 
 def format_ordinance(ordinances):
-    return "\n".join([
+    return "\n\n".join([
         f"- **Cap {ord['cap_no']} ({ord['cap_title']}), {'Regulation' if ord['cap_no'][-1].isalpha() else 'Section'} {ord['section_no']} ({ord['section_heading']})**: {ord['text']}\n({ord['url']})"
         for ord in ordinances
     ])
 
 def format_judgement(judgements):
-    return "\n".join([f"- **{judge['date']}: {judge['case_name']} ({judge['court']})**: {judge['text']}\n({judge['url']})" for judge in judgements])
+    return "\n\n".join([f"""- **{judge['date']}: {judge['case_name']} ({judge['court']})**: {judge['case_summary']}\n->Case Causes: {judge['case_causes']}\n->Court Decision: {judge['court_decision']}\n({judge['url']})""" for judge in judgements])
 
 def get_sys_message(message, top_k, query_type):
     ordinances = search(message, "ordinances", top_k=top_k, query_type=query_type)
@@ -120,7 +105,7 @@ def get_sys_message(message, top_k, query_type):
     judgements = search(message, "judgements", top_k=top_k, query_type=query_type)
     judgements = format_judgement(judgements)
 
-    sys_msg = sys_template.format(ordinances=ordinances, judgements=judgements)
+    sys_msg = getQAPrompt().format(ordinances=ordinances, judgements=judgements)
     return sys_msg
 
 def chat_reqponse(message, history, temperature, top_k, query_type):
@@ -131,9 +116,7 @@ def chat_reqponse(message, history, temperature, top_k, query_type):
     metadata_display = f"### Search Query\n{search_query}\n\n### System Message\n{sys_msg}"
 
     response = llm_client.chat.completions.create(
-        # model="glm-4-flash",  
-        # model="glm-4-air",
-        model="trygpt4o",
+        model=MODEL,
         messages=messages,
         temperature=temperature,
         stream=True
@@ -150,25 +133,17 @@ def chat_reqponse(message, history, temperature, top_k, query_type):
 with gr.Blocks(fill_height=True, elem_id="chat_block") as chat_block:
     sys_msg_block = gr.Markdown(label="System Message", render = False)
     with gr.Row():
-        top_k = gr.Number(value=10, label="Top K")
-        query_type = gr.Radio(["vector", "fts", "hybrid"], value="hybrid", label="Search Method", scale=2)
-        temperature_slider = gr.Slider(minimum=0.1, maximum=1.0, step=0.1, value=0.9, label="Temperature", scale=2)
-    with gr.Row():
+        top_k = gr.Number(value=6, label="Top K")
+        query_type = gr.Radio(["vector", "fts", "hybrid"], value="vector", label="Search Method", scale=2)
+        temperature_slider = gr.Slider(minimum=0.1, maximum=1.0, step=0.1, value=0.2, label="Temperature", scale=2)
+    with gr.Row(height=800):
         chat_interface = gr.ChatInterface(chat_reqponse, type="messages", save_history=True, additional_inputs=[temperature_slider, top_k, query_type], additional_outputs=[sys_msg_block], fill_height=True)
     with gr.Row():
         sys_msg_block.render()
 
 
-get_tasks_prompt_template = f"""You are a legal consulting agent. You are required to identify all the aspect to the specific legal topic that may alter the judgement of similar cases. Give them as easy to understant questions to the user. These aspects should be based on the information provided below.
 
-### Ordinances and Regulations
-{{ordinances}}
-
-### Judgements and Cases
-{{judgements}}"""
-
-with open("consult_task_schema.json") as f:
-    consult_task_schema = json.load(f)
+# Consult UI
 
 def get_tasks(consult_topic, search_query, top_k, query_type):
     ordinances = search(search_query, "ordinances", top_k=top_k, query_type=query_type)
@@ -177,35 +152,40 @@ def get_tasks(consult_topic, search_query, top_k, query_type):
     judgements = search(search_query, "judgements", top_k=top_k, query_type=query_type)
     judgements = format_judgement(judgements)
 
-    tasks_prompt = get_tasks_prompt_template.format(ordinances=ordinances, judgements=judgements)
+    tasks_prompt = getTasksPrompt().format(ordinances=ordinances, judgements=judgements)
 
-    tasks_list = llm_client.chat.completions.create(
-        model="trygpt4o",
+    tasks_list = llm_client.beta.chat.completions.parse(
+        model=MODEL,
         messages=[{"role": "system", "content": tasks_prompt}, {"role": "user", "content": f"## Consultation Topic\n{consult_topic}"}],
-        response_format = {
-            "type": "json_schema",
-            "json_schema": consult_task_schema
-        }
+        response_format = consultTaskSchema
     )
 
-    return tasks_list.choices[0].message.content
+    return tasks_list.choices[0].message.parsed
 
 def consult_response(message, history, temperature, top_k, query_type):
     search_query = get_search_query(message, history)
     tasks = get_tasks(message, search_query, top_k, query_type)
-    return tasks, "### Search Query\n" + search_query
+    
+    # Format tasks into a markdown string
+    tasks_markdown = tasks.model_dump_json(indent=2)
+    
+    return tasks_markdown, "### Search Query\n" + search_query
 
+# Update the layout to show tasks in chat
 with gr.Blocks(fill_height=True, elem_id="consult_block") as consult_block:
     sys_msg_block = gr.Markdown(label="System Message", render = False)
     with gr.Row():
-        top_k = gr.Number(value=10, label="Top K")
-        query_type = gr.Radio(["vector", "fts", "hybrid"], value="hybrid", label="Search Method", scale=2)
-        temperature_slider = gr.Slider(minimum=0.1, maximum=1.0, step=0.1, value=0.9, label="Temperature", scale=2)
+        top_k = gr.Number(value=6, label="Top K")
+        query_type = gr.Radio(["vector", "fts", "hybrid"], value="vector", label="Search Method", scale=2)
+        temperature_slider = gr.Slider(minimum=0.1, maximum=1.0, step=0.1, value=0.2, label="Temperature", scale=2)
     with gr.Row():
-        with gr.Column():
-            tasks_list = gr.Markdown(label="Tasks", value="## Tasks")
-        with gr.Column(scale=2):
-            chat_interface = gr.ChatInterface(consult_response, type="messages", additional_inputs=[temperature_slider, top_k, query_type], additional_outputs=[sys_msg_block], fill_height=True)
+        chat_interface = gr.ChatInterface(
+            consult_response,
+            type="messages",
+            additional_inputs=[temperature_slider, top_k, query_type],
+            additional_outputs=[sys_msg_block],
+            fill_height=True
+        )
     with gr.Row():
         sys_msg_block.render()
 

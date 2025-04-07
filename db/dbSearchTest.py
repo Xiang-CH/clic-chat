@@ -2,7 +2,7 @@ from cachetools import cached
 from dotenv import load_dotenv
 
 from langchain_community.vectorstores import LanceDB
-from langchain_openai import AzureOpenAIEmbeddings
+
 
 import lancedb
 from lancedb.embeddings import get_registry, TextEmbeddingFunction
@@ -34,7 +34,7 @@ from lancedb.rerankers import RRFReranker
 
 load_dotenv()
 
-db = lancedb.connect("./lancedb")
+db = lancedb.connect("db/lancedb")
 
 print(db.table_names())
 table = db.open_table("ordinances")
@@ -44,4 +44,6 @@ reranker = RRFReranker(return_score="all")
 docs = table.search(query, query_type="hybrid").limit(5).rerank(reranker=reranker).to_pandas()[["text", "_distance", "_score", "_relevance_score"]]
 print(docs)
 
+docs = table.search(query, query_type="fts").limit(5).to_pandas()[["text", "_score"]]
+print(docs)
 

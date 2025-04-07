@@ -5,6 +5,12 @@ dataProcessing/vectorData/*
 dataProcessing/.env
 dataProcessing/*.zip
 
+*.lock
+*.parquet
+*_tmp.json
+*_partial.json
+dataProcessing/generateCaseMetas/cases_meta.json
+
 # db/*git 
 db/lancedb
 
