@@ -17,3 +17,4 @@ sentence_transformers==3.3.1
 tiktoken==0.8.0
 torch==2.5.1
 tqdm==4.66.5
+gradio==5.27.0
