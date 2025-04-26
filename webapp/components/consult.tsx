@@ -10,12 +10,17 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { GroundingsDisplay } from "./groundings-display";
+import { TaskDisplay } from "./task-display";
+import { v4 as uuidv4 } from 'uuid';
 
-export function Chat() {
-  const chatId = "001";
-  const [ searchQuery, setSearchQuery ] = useState<string | null>(null);
+export function Consult() {
+  const consultId = "002";
+  const [ searchQuery, setSearchQuery ] = useState<Array<string> | null>(null);
   const [ groundings, setGroundings ] = useState<any | null>(null);
+  const [ tasks, setTasks ] = useState<any | null>(null);
   const { isDevMode } = useDevMode();
+  const [ sessionId ] = useState(() => uuidv4());
+  // const sessionId = "001";
 
   const {
     messages,
@@ -28,8 +33,10 @@ export function Chat() {
     stop,
     data
   } = useChat({
-    api: "http://127.0.0.1:8000/api/chat",
-    // api: "https://clic-api.cxiang.site/api/chat",
+    id: sessionId,
+    body: { id: sessionId },
+    api: "http://127.0.0.1:8000/api/consult",
+    // api: "https://clic-api.cxiang.site/api/consult",
     maxSteps: 4,
     onError: (error) => {
       if (error.message.includes("Too many requests")) {
@@ -40,21 +47,27 @@ export function Chat() {
     },
   });
 
+  useEffect(() => {
+    return () => {
+      fetch(`http://127.0.0.1:8000/api/exit?id=${sessionId}`)
+    }
+  }, [])
+
   const [messagesContainerRef, messagesEndRef] =
     useScrollToBottom<HTMLDivElement>();
 
   useEffect(() => {
     if (data && data[data.length - 1]) {
-      const dataDict = (data[data.length - 1] as { searchQuery?: string, groundings?: any, searchQueries?: Array<string> })
+      const dataDict = (data[data.length - 1] as { searchQueries?: Array<string>, groundings?: any, tasks?: any })
       console.log(dataDict)
       if (dataDict?.groundings) {
         setGroundings(dataDict.groundings);
       } 
-      if (dataDict?.searchQuery) {
-        setSearchQuery(dataDict.searchQuery);
-      }
       if (dataDict?.searchQueries) {
-        setSearchQuery(dataDict.searchQueries.join("\n"));
+        setSearchQuery(dataDict.searchQueries);
+      }
+      if (dataDict?.tasks) {
+        setTasks(dataDict.tasks);
       }
     }
   }, [data]);
@@ -65,8 +78,12 @@ export function Chat() {
         <div className="col-span-1 p-4 border-r border-border overflow-y-auto h-full">
           {searchQuery && (
             <div className="mb-4">
-              <h3 className="font-semibold mb-2">Search Query</h3>
-              <pre className="text-xs bg-muted p-2 rounded mt-1 overflow-x-auto">{searchQuery}</pre>
+              <h3 className="font-semibold mb-2">Search Queries</h3>
+              {
+                searchQuery.map((query, index) => (
+                  <pre key={index} className="text-xs bg-muted p-2 rounded mt-1 overflow-x-auto">{query}</pre>
+                ))
+              }
             </div>
           )}
           {isDevMode && groundings && (
@@ -88,16 +105,15 @@ export function Chat() {
           {messages.map((message, index) => (
             <PreviewMessage
               key={message.id}
-              chatId={chatId}
+              chatId={consultId}
               message={message}
-              groundings={groundings}
               isLoading={isLoading && messages.length - 1 === index}
             />
           ))}
 
           {isLoading &&
             messages.length > 0 &&
-            (messages[messages.length - 1].role === "user" || !messages[messages.length - 1].content ) && <ThinkingMessage query={searchQuery}/>}
+            (messages[messages.length - 1].role === "user" || !messages[messages.length - 1].content ) && <ThinkingMessage query={searchQuery?.join(", ")}/>}
 
           <div
             ref={messagesEndRef}
@@ -107,12 +123,10 @@ export function Chat() {
 
         <form className="flex mx-auto px-4 bg-background pb-4 md:pb-6 gap-2 w-full max-w-3xl">
           <MultimodalInput
-            chatId={chatId}
+            chatId={consultId}
             input={input}
             setInput={setInput}
             handleSubmit={(event) => {
-              setGroundings(null);
-              setSearchQuery(null);
               handleSubmit(event)
             }}
             isLoading={isLoading}
@@ -126,13 +140,13 @@ export function Chat() {
       
       {isDevMode && (
         <div className="col-span-1 p-4 border-l border-border overflow-y-auto">
-          <h3 className="font-semibold mb-2">Message Details</h3>
-          {messages.length > 0 && (
+          {tasks && (
             <div>
-              <h4 className="text-sm font-medium">All Messages:</h4>
-              <pre className="text-xs bg-muted p-2 rounded mt-1 overflow-x-auto">
-                {JSON.stringify([...messages].reverse(), null, 2)}
-              </pre>
+              <h3 className="font-semibold mb-2">Task Details</h3>
+              {/* <h4 className="text-sm font-medium">All Messages:</h4> */}
+              <TaskDisplay 
+                tasks={tasks} 
+              />
             </div>
           )}
         </div>

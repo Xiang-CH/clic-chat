@@ -19,7 +19,7 @@ import { ArrowUpIcon, StopIcon } from "./icons";
 import { Button } from "./ui/button";
 import { Textarea } from "./ui/textarea";
 
-const suggestedActions = [
+const suggestedActionsChat = [
   {
     title: "Punishment for copyright infringement",
     label: "in Hong Kong",
@@ -31,6 +31,19 @@ const suggestedActions = [
     action: "What count as illegal importation of foreign goods?",
   },
 ];
+
+const suggestedActionsConsult = [
+  {
+    title: "Consult on rent disbutes",
+    label: "in Hong Kong",
+    action: "I want to consult on rent disputes between tenants and landlords.",
+  },
+  {
+    title: "Consult on employment disputes",
+    label: "in Hong Kong",
+    action: "I want to consult on employment disputes between employers and employees.",
+  },
+]
 
 export function MultimodalInput({
   chatId,
@@ -64,6 +77,7 @@ export function MultimodalInput({
   className?: string;
 }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const suggestedActions = chatId === "001" ? suggestedActionsChat : suggestedActionsConsult;
   const { width } = useWindowSize();
 
   useEffect(() => {
@@ -117,7 +131,7 @@ export function MultimodalInput({
   return (
     <div className="relative w-full flex flex-col gap-4">
       {messages.length === 0 && (
-        <div className="grid sm:grid-cols-2 gap-2 w-full">
+        <div className="grid sm:grid-cols-2 gap-2 w-full max-w-full relative">
           {suggestedActions.map((suggestedAction, index) => (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -125,7 +139,7 @@ export function MultimodalInput({
               exit={{ opacity: 0, y: 20 }}
               transition={{ delay: 0.05 * index }}
               key={`suggested-action-${suggestedAction.title}-${index}`}
-              className={index > 1 ? "hidden sm:block" : "block"}
+              className={index > 1 ? "hidden sm:block max-w-full" : "block max-w-full"}
             >
               <Button
                 variant="ghost"
@@ -135,10 +149,10 @@ export function MultimodalInput({
                     content: suggestedAction.action,
                   });
                 }}
-                className="text-left border rounded-xl px-4 py-3.5 text-sm flex-1 gap-1 sm:flex-col w-full h-auto justify-start items-start"
+                className="text-left border rounded-xl px-4 py-3.5 text-sm flex-1 gap-0 md:gap-1 flex-col w-full h-auto justify-start items-start break-words"
               >
                 <span className="font-medium">{suggestedAction.title}</span>
-                <span className="text-muted-foreground">
+                <span className="text-muted-foreground whitespace-normal">
                   {suggestedAction.label}
                 </span>
               </Button>

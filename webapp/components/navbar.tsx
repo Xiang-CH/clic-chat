@@ -24,7 +24,7 @@ export const Navbar = () => {
           <NavigationMenuItem>
             <Link href="/" legacyBehavior passHref>
               <NavigationMenuLink className="font-medium text-lg">
-                CLIC AI
+                CLIC CHAT
               </NavigationMenuLink>
             </Link>
           </NavigationMenuItem>
@@ -59,7 +59,7 @@ export const Navbar = () => {
         </NavigationMenuList>
       </div>
 
-      <div className="flex items-center space-x-2">
+      <div className="hidden md:flex items-center space-x-2">
         <Label htmlFor="dev-mode" className="text-sm">Dev Mode</Label>
         <Switch
           id="dev-mode"

@@ -2,7 +2,6 @@ import { motion } from "framer-motion";
 import Link from "next/link";
 
 import { MessageIcon } from "./icons";
-import { LogoPython } from "@/app/icons";
 
 export const Overview = () => {
   return (
@@ -16,49 +15,23 @@ export const Overview = () => {
     >
       <div className="rounded-xl p-6 flex flex-col gap-8 leading-relaxed text-center max-w-xl">
         <p className="flex flex-row justify-center gap-4 items-center">
-          <LogoPython size={32} />
+          <img src="/clic-logo.gif" width={36} height={36} alt="clic logo"></img>
           <span>+</span>
           <MessageIcon size={32} />
         </p>
         <p>
-          This is an{" "}
-          <Link
-            className="font-medium underline underline-offset-4"
-            href="https://github.com/vercel-labs/ai-sdk-preview-python-streaming"
-            target="_blank"
-          >
-            open source
-          </Link>{" "}
-          template that demonstrates the usage of{" "}
-          <Link
-            className="font-medium underline underline-offset-4"
-            href="https://sdk.vercel.ai/docs/ai-sdk-ui/stream-protocol#data-stream-protocol"
-            target="_blank"
-          >
-            Data Stream Protocol
-          </Link>{" "}
-          to stream chat completions from a Python function (
-          <Link
-            className="font-medium underline underline-offset-4"
-            href="https://fastapi.tiangolo.com"
-            target="_blank"
-          >
-            FastAPI
-          </Link>
-          ) along with the
-          <code className="rounded-md bg-muted px-1 py-0.5">useChat</code> hook
-          on the client to create a seamless chat experience.
+          CLIC-Chat is an AI system for community legal education that provides
+          information about Hong Kong ordinances and legal cases. Ask me anything.
         </p>
-        <p>
-          You can learn more about the AI SDK by visiting the{" "}
+        <p className="hidden md:block">
+          If you want to read more about the law in Hong Kong, check out  {" "}
           <Link
             className="font-medium underline underline-offset-4"
-            href="https://sdk.vercel.ai/docs"
+            href="https://www.clic.org.hk/"
             target="_blank"
           >
-            docs
-          </Link>
-          .
+            CLIC (Community Legal Information Centre)
+          </Link>{" "}
         </p>
       </div>
     </motion.div>

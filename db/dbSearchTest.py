@@ -37,13 +37,18 @@ load_dotenv()
 db = lancedb.connect("db/lancedb")
 
 print(db.table_names())
-table = db.open_table("ordinances")
+table = db.open_table("judgements")
+table.create_fts_index("case_name", use_tantivy=False)
 
-query = "what can i do if my landlord is not fixing things"
-reranker = RRFReranker(return_score="all")
-docs = table.search(query, query_type="hybrid").limit(5).rerank(reranker=reranker).to_pandas()[["text", "_distance", "_score", "_relevance_score"]]
-print(docs)
+# res = table.search().where("case_number LIKE 'HCAL 2546/2001'").to_list()
+# print(res)
 
-docs = table.search(query, query_type="fts").limit(5).to_pandas()[["text", "_score"]]
-print(docs)
+# query = "what can i do if my landlord is not fixing things"
+# reranker = RRFReranker(return_score="all")
+# # docs = table.search(query, query_type="hybrid").limit(5).rerank(reranker=reranker).to_pandas()[["text", "_distance", "_score", "_relevance_score"]]
+# docs = table.search(query, query_type="hybrid").limit(5).rerank(reranker=reranker).to_pandas().to_dict(orient="records")
+# print(docs)
+
+# docs = table.search(query, query_type="fts").limit(5).to_pandas()[["text", "_score"]]
+# print(docs)
 

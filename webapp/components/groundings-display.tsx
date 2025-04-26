@@ -8,6 +8,7 @@ interface Ordinance {
   text: string;
   url: string;
   _relevance_score?: number;
+  _distance?: number;
 }
 
 interface Judgement {
@@ -19,16 +20,16 @@ interface Judgement {
   court_decision: string;
   url: string;
   _relevance_score?: number;
+  _distance?: number;
 }
 
-interface GroundingsProps {
-  groundings: {
-    ordinances: Ordinance[];
-    judgements: Judgement[];
-  };
+export interface Groundings {
+  ordinances: Ordinance[];
+  judgements: Judgement[];
 }
 
-export const GroundingsDisplay = ({ groundings }: GroundingsProps) => {
+
+export const GroundingsDisplay = ({ groundings }: { groundings: Groundings }) => {
   return (
     <div className="flex flex-col gap-4 w-full">
       {groundings.ordinances.length > 0 && (
@@ -42,6 +43,7 @@ export const GroundingsDisplay = ({ groundings }: GroundingsProps) => {
                   {ord.section_heading && ` - ${ord.section_heading}`}
                 </h4>
                 <p className="mt-1 text-sm max-h-72 text-ellipsis overflow-auto">{ord.text}</p>
+                <p className="mt-1 text-xs text-muted-foreground">Score: {ord._relevance_score? ord._relevance_score.toFixed(2) : ord._distance?.toFixed(2)}</p>
                 <Citation title={`Cap ${ord.cap_no}, Section ${ord.section_no}`} url={ord.url} />
               </div>
             ))}
@@ -63,6 +65,7 @@ export const GroundingsDisplay = ({ groundings }: GroundingsProps) => {
                   <p><span className="font-bold">Case Causes:</span> {judge.case_causes}</p>
                   <p><span className="font-bold">Court Decision:</span> {judge.court_decision}</p>
                 </div>
+                <p className="mt-1 text-xs text-muted-foreground">Score: {judge._relevance_score? judge._relevance_score.toFixed(2) : judge._distance?.toFixed(2)}</p>
                 <Citation title={judge.case_name} url={judge.url} />
               </div>
             ))}

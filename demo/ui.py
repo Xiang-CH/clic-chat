@@ -1,8 +1,7 @@
 import gradio as gr
-import json
 import os
 from typing import Literal
-from prompts import getQAPrompt, getTasksPrompt, getQueryRewritePrompt, consultTaskSchema
+from demo.prompts import getQAPrompt, getTasksPrompt, getQueryRewritePrompt, consultTaskSchema
 
 import lancedb
 
