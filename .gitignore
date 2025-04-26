@@ -38,3 +38,6 @@ cloudflared.deb
 
 db/_temp
 db/temp.txt
+lqb
+
+eval/*.json
